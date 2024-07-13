@@ -38,7 +38,7 @@ class Rpi_Picamera2(RpiCamera):
         super().__init__(camera_proxy)
         self.thread = None
         self.event = threading.Event()
-        self.timeout = None
+        self.timeout = 0
         
     def _specific_initialization(self):
         """Camera initialization.
@@ -103,7 +103,8 @@ class Rpi_Picamera2(RpiCamera):
             raise ValueError('Start time shall be greater than 0')
         if not self._cam._preview:
             raise RuntimeError('Preview shall be started first')
-        
+        # Use this condition to start preview loop in start preview
+        self.timeout = timeout
         while timeout > 0:
             self._show_overlay(timeout, alpha)
             time.sleep(1)
@@ -113,7 +114,7 @@ class Rpi_Picamera2(RpiCamera):
 
     def start_preview(self, rect):
         """Target function to be run in a different thread"""
-        while True:
+        while self.timeout > 0:
             array = self._cam.capture_array('main')
             
             # RGBX is 32 bit and has an unused 8 bit channel described as X
@@ -125,6 +126,7 @@ class Rpi_Picamera2(RpiCamera):
             self._window.surface.blit(pg_image,
                                     pg_image.get_rect(center=screen_rect.center))
             if self._overlay:
+                print(time.time(), ': ', self._overlay)
                 self._window.surface.blit(self._overlay, self._overlay.get_rect(center=screen_rect.center))
 
     def stop_preview(self):
