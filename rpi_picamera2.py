@@ -2,6 +2,7 @@ import picamera2
 import pygame
 import time
 import threading
+import math
 try:
     import pibooth 
 except Exception as ex:
@@ -9,7 +10,8 @@ except Exception as ex:
     exit()
 from pibooth.utils import LOGGER
 from pibooth.camera.rpi import RpiCamera
-from picamera2 import Picamera2, Preview
+from pibooth.language import get_translated_text
+from picamera2 import Picamera2
 from libcamera import Transform
 from io import BytesIO
 # cam = Picamera2()
@@ -36,14 +38,12 @@ class Rpi_Picamera2(RpiCamera):
 
     def __init__(self, camera_proxy):
         super().__init__(camera_proxy)
-        self.thread = None
-        self.event = threading.Event()
+        self.process = None
         self.timeout = 0
         
     def _specific_initialization(self):
         """Camera initialization.
         """
-        # Create capture configuration
     
     def _show_overlay(self, text, alpha):
         """Add an image as an overlay
@@ -60,11 +60,13 @@ class Rpi_Picamera2(RpiCamera):
 
             # convert pil image to pygame.Surface
             self._overlay = pygame.image.frombuffer(image.tobytes(),size,'RGBA')
-            
+            self.update_preview()
+
     def _hide_overlay(self):
         """"""
         if self._overlay:
             self._overlay = None
+            self.update_preview()
 
     def preview(self, window, flip=True):
         if self._cam._preview:
@@ -72,9 +74,9 @@ class Rpi_Picamera2(RpiCamera):
             return
         # create rect dimensions for preview window
         self._window = window
-        rect = self.get_rect(self.MAX_RESOLUTION)
+        self.rect = self.get_rect(self.MAX_RESOLUTION)
         # Create preview configuration
-        preview_config = self._cam.create_preview_configuration(main={'size':(rect.width,rect.height)})
+        preview_config = self._cam.create_preview_configuration(main={'size':(self.rect.width,self.rect.height)})
         self._cam.configure(preview_config)
         
         # if the camera image has been flipped don't flip a second time
@@ -82,15 +84,8 @@ class Rpi_Picamera2(RpiCamera):
         #     flip = 0
         # else:
             # flip = 1
-        
         self._cam.start()
-        # Starting camera withouth passing a preview window assing picamera2.previews.null_preview.NullPreview
-        # set as daemon so that the program cleanly closes python program
-        
-        self.thread=threading.Thread(target=self.start_preview, daemon=True, 
-                    args=(rect,))
-        self.thread.start()
-        
+        self.update_preview()
 
     def preview_countdown(self, timeout, alpha=60):
         """Show a countdown of 'timeout' seconds on the preview.
@@ -103,31 +98,38 @@ class Rpi_Picamera2(RpiCamera):
             raise ValueError('Start time shall be greater than 0')
         if not self._cam._preview:
             raise RuntimeError('Preview shall be started first')
-        # Use this condition to start preview loop in start preview
-        self.timeout = timeout
+        time_stamp = time.time() 
+        
         while timeout > 0:
             self._show_overlay(timeout, alpha)
-            time.sleep(1)
-            timeout -= 1
-            self._hide_overlay()
-            pygame.display.update()
+            if time.time()-time_stamp > 1:
+                timeout -= 1
+                time_stamp = time.time()
+                self._hide_overlay()
+        # Keep smile for 1 second
+        while time.time()-time_stamp < 1:
+            self._show_overlay(get_translated_text('smile'), alpha)
+        # Remove smile
+        # _hide_overlay sets self._overlay = None otherwise app stalls after capture method is called
+        self._hide_overlay()
 
-    def start_preview(self, rect):
-        """Target function to be run in a different thread"""
-        while self.timeout > 0:
-            array = self._cam.capture_array('main')
-            
-            # RGBX is 32 bit and has an unused 8 bit channel described as X
-            # XBGR is used in the preview configuration
-            pg_image = pygame.image.frombuffer(array.data, 
-                        (rect.width, rect.height), 'RGBX')
+    
 
-            screen_rect = self._window.surface.get_rect()
-            self._window.surface.blit(pg_image,
-                                    pg_image.get_rect(center=screen_rect.center))
-            if self._overlay:
-                print(time.time(), ': ', self._overlay)
-                self._window.surface.blit(self._overlay, self._overlay.get_rect(center=screen_rect.center))
+    def update_preview(self):
+        """Capture image and update screen with image"""
+        array = self._cam.capture_array('main')
+        
+        # RGBX is 32 bit and has an unused 8 bit channel described as X
+        # XBGR is used in the preview configuration
+        pg_image = pygame.image.frombuffer(array.data, 
+                    (self.rect.width, self.rect.height), 'RGBX')
+
+        screen_rect = self._window.surface.get_rect()
+        self._window.surface.blit(pg_image,
+                                pg_image.get_rect(center=screen_rect.center))
+        if self._overlay:
+            self._window.surface.blit(self._overlay, self._overlay.get_rect(center=screen_rect.center))
+        pygame.display.update() 
 
     def stop_preview(self):
         if self._cam._preview:
