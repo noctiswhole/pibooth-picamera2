@@ -113,8 +113,17 @@ class Rpi_Picamera2(RpiCamera):
         # _hide_overlay sets self._overlay = None otherwise app stalls after capture method is called
         self._hide_overlay()
 
-    
-
+    def preview_wait(self, timeout, alpha=60):
+        time_stamp = time.time()
+        # Keep preview for the duration of timeout
+        while time.time() - time_stamp < timeout:
+            self.update_preview()
+        time_stamp = time.time()
+        # Keep smile for 1 second
+        while time.time()-time_stamp < 1:
+            self._show_overlay(get_translated_text('smile'), alpha)
+        self._hide_overlay()
+        
     def update_preview(self):
         """Capture image and update screen with image"""
         array = self._cam.capture_array('main')
