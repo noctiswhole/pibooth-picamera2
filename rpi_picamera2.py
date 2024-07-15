@@ -43,9 +43,9 @@ class Rpi_Picamera2(RpiCamera):
         """
         # Create preview configuration
         self._preview_config = self._cam.create_preview_configuration(main={'size':(self.resolution[0],
-                        self.resolution[1])})
+                        self.resolution[1])}, transform=Transform(hflip=self.preview_flip))
         self._capture_config = self._cam.create_still_configuration(main={'size':(self.resolution[0],
-                            self.resolution[1])})
+                            self.resolution[1])},transform=Transform(hflip=self.capture_flip))
         
     
     def _show_overlay(self, text, alpha):
@@ -80,10 +80,10 @@ class Rpi_Picamera2(RpiCamera):
         rect = self.get_rect(self.MAX_RESOLUTION)
         
         # if the camera image has been flipped don't flip a second time
-        # if flip:
-        #     flip = 0
-        # else:
-            # flip =
+        if self.preview_flip != flip:
+            self.preview_flip = flip
+            self._preview_config['transform'].hflip = flip
+
         self._cam.configure(self._preview_config)
         self._cam.start()
         self.update_preview()
