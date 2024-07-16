@@ -62,8 +62,9 @@ class Rpi_Picamera2(RpiCamera):
         """Add an image as an overlay
         """
         if self._window:
-            # return a rect the size of the preview window
-            rect = self.get_rect(self.MAX_RESOLUTION)
+            # return a rect the size of the preview window(Keep overlay the same with
+            # rotate=False)
+            rect = self.get_rect(self.MAX_RESOLUTION, rotate=False)
 
             # Create an image padded to the required size
             size = (((rect.width + 31) // 32) * 32, ((rect.height + 15) // 16) * 16)
@@ -103,8 +104,11 @@ class Rpi_Picamera2(RpiCamera):
             return pygame.transform.rotate(image,360-self.preview_rotation)
         return image
         
-    def get_rect(self, max_size):
-        if self.preview_rotation in (90,270):
+    def get_rect(self, max_size, rotate=True):
+        """Get preview window. Rotate window to match camera rotation.
+        Not implemented in picamera2. 
+        """
+        if self.preview_rotation in (90,270) and rotate:
             rect = super().get_rect(max_size)
             rect.width, rect.height = rect.height, rect.width 
             return rect
