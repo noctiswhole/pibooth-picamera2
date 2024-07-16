@@ -54,9 +54,9 @@ class Rpi_Picamera2(RpiCamera):
         # Create preview configuration
         self._preview_config = self._cam.create_preview_configuration(main={'size':resolution}, 
                                 transform=Transform(hflip=self.preview_flip))
+        
         self._capture_config = self._cam.create_still_configuration(main={'size':resolution},
                                 transform=Transform(hflip=self.capture_flip))
-        
     
     def _show_overlay(self, text, alpha):
         """Add an image as an overlay
@@ -83,9 +83,9 @@ class Rpi_Picamera2(RpiCamera):
 
     def _post_process_capture(self,capture_data):
 
-        image = super()._post_process_capture(capture_data)
-        # Rotate image
-        return self._rotate_image(image, self.capture_rotation)
+        img = super()._post_process_capture(capture_data)
+        return self._rotate_image(img)
+        
 
     def _transform(self):
         """Return tuple for configuring picamera"""
@@ -94,13 +94,13 @@ class Rpi_Picamera2(RpiCamera):
         else:
             return self.resolution
     
-    def _rotate_image(self, image, rotation):
+    def _rotate_image(self, image:PIL.Image.Image | pygame.Surface):
         """Rotate image clockwise"""
-        if rotation != 0:
+        # Camera rotation is the same for both preview and capture
+        if self.capture_rotation != 0 and self.preview_rotation != 0:
             if isinstance(image, PIL.Image.Image):
-                return image.rotate(360-rotation)
-            else:
-                return pygame.transform.rotate(image,360-rotation)
+                return image.transpose(getattr(Image,f'ROTATE_{self.capture_rotation}'))
+            return pygame.transform.rotate(image,360-self.preview_rotation)
         return image
         
     def get_rect(self, max_size):
@@ -125,9 +125,9 @@ class Rpi_Picamera2(RpiCamera):
             # when the image is rotated, the horizontally flipping is done
             # by vertically flipping it.
             if self.preview_rotation in (90,270):
-                self._preview_config['transform'].vflip = flip
+                self._preview_config['transform'] = Transform(vflip=flip)
             else:
-                self._preview_config['transform'].hflip = flip
+                self._preview_config['transform'] = Transform(hflip=flip)
 
         self._cam.configure(self._preview_config)
         self._cam.start()
@@ -181,7 +181,7 @@ class Rpi_Picamera2(RpiCamera):
         # XBGR is used in the preview configuration
         pg_image = pygame.image.frombuffer(res.data, 
                     (rect.width, rect.height), 'RGBX')
-        pg_image = self._rotate_image(pg_image, self.preview_rotation)
+        pg_image = self._rotate_image(pg_image)
         screen_rect = self._window.surface.get_rect()
         self._window.surface.blit(pg_image,
                                 pg_image.get_rect(center=screen_rect.center))
@@ -205,9 +205,10 @@ class Rpi_Picamera2(RpiCamera):
             LOGGER.info(f'{self.__class__.__name__} has not been implemented with any effects')
 
         stream = BytesIO()
+        
         self._cam.switch_mode(self._capture_config)
         self._cam.capture_file(stream, format='jpeg')
-        
+
         self._captures.append(stream)
         # Reconfigure and Stop camera before next preview
         self._cam.switch_mode(self._preview_config)
