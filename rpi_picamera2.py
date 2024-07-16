@@ -2,6 +2,7 @@ import picamera2
 import pygame
 import time
 import cv2
+import PIL
 try:
     import pibooth 
 except Exception as ex:
@@ -80,6 +81,12 @@ class Rpi_Picamera2(RpiCamera):
             self._overlay = None
             self.update_preview()
 
+    def _post_process_capture(self,capture_data):
+
+        image = super()._post_process_capture(capture_data)
+        # Rotate image
+        return self._rotate_image(image, self.capture_rotation)
+
     def _transform(self):
         """Return tuple for configuring picamera"""
         if self.preview_rotation in (90,270):
@@ -89,8 +96,13 @@ class Rpi_Picamera2(RpiCamera):
     
     def _rotate_image(self, image, rotation):
         """Rotate image clockwise"""
-        return pygame.transform.rotate(image,360-rotation) if rotation != 0 else image
-
+        if rotation != 0:
+            if isinstance(image, PIL.Image.Image):
+                return image.rotate(360-rotation)
+            else:
+                return pygame.transform.rotate(image,360-rotation)
+        return image
+        
     def get_rect(self, max_size):
         if self.preview_rotation in (90,270):
             rect = super().get_rect(max_size)
@@ -110,6 +122,8 @@ class Rpi_Picamera2(RpiCamera):
         if self.preview_flip != flip:
             self.preview_flip = flip
             # if rotation is 90 or 270 degrees, vertically flip the image
+            # when the image is rotated, the horizontally flipping is done
+            # by vertically flipping it.
             if self.preview_rotation in (90,270):
                 self._preview_config['transform'].vflip = flip
             else:
@@ -193,6 +207,7 @@ class Rpi_Picamera2(RpiCamera):
         stream = BytesIO()
         self._cam.switch_mode(self._capture_config)
         self._cam.capture_file(stream, format='jpeg')
+        
         self._captures.append(stream)
         # Reconfigure and Stop camera before next preview
         self._cam.switch_mode(self._preview_config)
