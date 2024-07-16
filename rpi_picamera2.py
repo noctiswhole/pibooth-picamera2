@@ -25,27 +25,36 @@ def get_rpi_picamera2_proxy():
 
 class Rpi_Picamera2(RpiCamera):
 
-    """Plugin to manage the raspberry pi module v3
+    """Raspberry pi module v3 camera management
     """
     # Maximum resolution of the camera v3 module
-
     MAX_RESOLUTION = (4608,2592)
+    IMAGE_EFFECTS = [u'none',
+                     u'blur',
+                     u'contour',
+                     u'detail',
+                     u'edge_enhance',
+                     u'edge_enhance_more',
+                     u'emboss',
+                     u'find_edges',
+                     u'smooth',
+                     u'smooth_more',
+                     u'sharpen']
 
     def __init__(self, camera_proxy):
         super().__init__(camera_proxy)
-        self.process = None
-        self.timeout = 0
         self._preview_config = None
         self._capture_config = None
         
     def _specific_initialization(self):
         """Camera initialization.
         """
+        resolution = self._transform()
         # Create preview configuration
-        self._preview_config = self._cam.create_preview_configuration(main={'size':(self.resolution[0],
-                        self.resolution[1])}, transform=Transform(hflip=self.preview_flip))
-        self._capture_config = self._cam.create_still_configuration(main={'size':(self.resolution[0],
-                            self.resolution[1])},transform=Transform(hflip=self.capture_flip))
+        self._preview_config = self._cam.create_preview_configuration(main={'size':resolution}, 
+                                transform=Transform(hflip=self.preview_flip))
+        self._capture_config = self._cam.create_still_configuration(main={'size':resolution},
+                                transform=Transform(hflip=self.capture_flip))
         
     
     def _show_overlay(self, text, alpha):
@@ -71,18 +80,40 @@ class Rpi_Picamera2(RpiCamera):
             self._overlay = None
             self.update_preview()
 
+    def _transform(self):
+        """Return tuple for configuring picamera"""
+        if self.preview_rotation in (90,270):
+            return self.resolution[1], self.resolution[0]
+        else:
+            return self.resolution
+    
+    def _rotate_image(self, image, rotation):
+        """Rotate image clockwise"""
+        return pygame.transform.rotate(image,360-rotation) if rotation != 0 else image
+
+    def get_rect(self, max_size):
+        if self.preview_rotation in (90,270):
+            rect = super().get_rect(max_size)
+            rect.width, rect.height = rect.height, rect.width 
+            return rect
+        return super().get_rect(max_size) 
+
     def preview(self, window, flip=True):
         if self._cam._preview:
             # Preview is still running
             return
         # create rect dimensions for preview window
         self._window = window
-        rect = self.get_rect(self.MAX_RESOLUTION)
         
         # if the camera image has been flipped don't flip a second time
+        # The flip overrides any previous flip value
         if self.preview_flip != flip:
             self.preview_flip = flip
-            self._preview_config['transform'].hflip = flip
+            # if rotation is 90 or 270 degrees, vertically flip the image
+            if self.preview_rotation in (90,270):
+                self._preview_config['transform'].vflip = flip
+            else:
+                self._preview_config['transform'].hflip = flip
 
         self._cam.configure(self._preview_config)
         self._cam.start()
@@ -136,7 +167,7 @@ class Rpi_Picamera2(RpiCamera):
         # XBGR is used in the preview configuration
         pg_image = pygame.image.frombuffer(res.data, 
                     (rect.width, rect.height), 'RGBX')
-
+        pg_image = self._rotate_image(pg_image, self.preview_rotation)
         screen_rect = self._window.surface.get_rect()
         self._window.surface.blit(pg_image,
                                 pg_image.get_rect(center=screen_rect.center))
@@ -153,15 +184,20 @@ class Rpi_Picamera2(RpiCamera):
     def capture(self, effect=None):
         """Capture a new picture in a file.
         """
-        try:
-            stream = BytesIO()
-            self._cam.switch_mode(self._capture_config)
-            self._cam.capture_file(stream, format='jpeg')
-            self._captures.append(stream)
-        finally:
-            # Reconfigure and Stop camera before next preview
-            self._cam.switch_mode(self._preview_config)
-            self._cam.stop()
+        effect = str(effect).lower()
+        if effect not in self.IMAGE_EFFECTS:
+            LOGGER.info(f'{effect} not in capture effects')
+        if effect != 'none' and effect in self.IMAGE_EFFECTS:
+            LOGGER.info(f'{self.__class__.__name__} has not been implemented with any effects')
+
+        stream = BytesIO()
+        self._cam.switch_mode(self._capture_config)
+        self._cam.capture_file(stream, format='jpeg')
+        self._captures.append(stream)
+        # Reconfigure and Stop camera before next preview
+        self._cam.switch_mode(self._preview_config)
+        self._cam.stop()
+       
 
     def quit(self):
         """Close camera
@@ -170,42 +206,3 @@ class Rpi_Picamera2(RpiCamera):
 
     
 
-class PreviewWindow():
-    def __init__(self, rect):
-        """Create a preview window based on the pygame sprite
-        """
-        self.x = rect.x 
-        self.y = rect.y
-        self.width = rect.width 
-        self.height = rect.height 
-
-        self._overlay = None 
-        self.preview_image = None
-
-    def resize_frames(self, array, rect):
-        """"""
-        # Resize high resolution image to fit smaller window
-        return cv2.resize(array, dsize=(rect.width,rect.height), 
-                interpolation=cv2.INTER_CUBIC)
-
-    def resize_window(self):
-        """Resize the preview window"""
-
-    def update(self, cam, rect):
-        """
-        """
-        array = cam.capture_array('main')
-        res = self.resize_frames(array, rect)
-        # R3GBX is 32 bit and has an unused 8 bit channel described as X
-        # XBGR is used in the preview configuration
-        pg_image = pygame.image.frombuffer(res.data, 
-                    (rect.width, rect.height), 'RGBX')
-
-    def draw(self, screen):
-        """Paint screen with frames"""
-        screen_rect = screen.get_rect()
-        screen.blit(self.preview_image,
-                    self.preview_image.get_rect(center=screen_rect.center))
-        if self._overlay:
-            screen.blit(self._overlay, self._overlay.get_rect(center=screen_rect.center))
-        pygame.display.update() 
