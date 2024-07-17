@@ -2,7 +2,7 @@
 pibooth-picamera2
 =================
 
-|PythonVersions| |PypiPackage| |Downloads|
+|PythonVersions| |PypiPackage|
 
 ``pibooth-picamera2`` is a plugin for the `pibooth`_ application.
 
@@ -35,6 +35,3 @@ Install
    :target: https://test.pypi.org/project/pibooth-picamera2 
    :alt: PyPi package 
 
-.. |Downloads| image:: https://img.shields.io/pypi/dm/pibooth?color=purple
-   :target: https://test.pypi.org/project/pibooth-picamera2
-   :alt: PyPi downloads
