@@ -47,9 +47,7 @@ def main():
         python_requires=">=3.9",
         install_requires=[
             'pibooth>=2.0.0',
-            'picamera2==0.3.19',
-            'Pillow>=9.2.0',
-            'pygame>=1.9.6'
+            'picamera2==0.3.19'
         ],
         zip_safe=False, # Don't install the lib as an .egg zipfile
         entry_points={'pibooth': ['pibooth_picamera2 = pibooth_picamera2']}

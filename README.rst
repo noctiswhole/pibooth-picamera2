@@ -2,7 +2,7 @@
 pibooth-picamera2
 =================
 
-|PythonVersions| |PypiPackage|
+|PythonVersions|
 
 ``pibooth-picamera2`` is a plugin for the `pibooth`_ application.
 
@@ -16,7 +16,7 @@ Hardware
 
 Software
 --------
-- picamera2 :: 0.3.19
+- picamera2 
 
 Install
 -------
@@ -31,7 +31,4 @@ Install
    :target: https://www.python.org/downloads 
    :alt: Python 3.9+
 
-.. |PypiPackage| image:: https//badge.fury.io/py/pibooth.svg 
-   :target: https://test.pypi.org/project/pibooth-picamera2 
-   :alt: PyPi package 
 
