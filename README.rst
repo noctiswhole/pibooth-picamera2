@@ -16,7 +16,7 @@ Hardware
 
 Software
 --------
-- picamera2
+- picamera2 :: 0.3.19
 
 Install
 -------
