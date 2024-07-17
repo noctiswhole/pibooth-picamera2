@@ -30,6 +30,7 @@ def pibooth_setup_camera(cfg):
     
     if not rpi_picamera2_proxy:
         LOGGER.info('Could not find picamera2')
+        LOGGER.info('Attempting to configure other cameras')
         return
     return Rpi_Picamera2(rpi_picamera2_proxy) 
 
