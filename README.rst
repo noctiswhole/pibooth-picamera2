@@ -12,15 +12,16 @@ any flow of the app or change the original code.
 
 Hardware
 --------
+- 1 Camera (Raspberry pi camera v3)
 
 Software
 --------
-
+- picamera2
 
 Install
 -------
 
 ::
 
-     $ pip3 install -i https://test.pypi.org/simple/ pibooth-picamera2 
+     $ pip3 install pibooth-picamera2 
 
