@@ -25,3 +25,16 @@ Install
 
      $ pip3 install pibooth-picamera2 
 
+.. _`pibooth`: https://pypi.org/project/pibooth 
+
+.. |PythonVersions| image:: https://img.shields.io/badge/python-3.9+-red.svg
+   :target: https://www.python.org/downloads 
+   :alt: Python 3.9+
+
+.. |PypiPackage| image:: https//badge.fury.io/py/pibooth.svg 
+   :target: https://test.pypi.org/project/pibooth-picamera2 
+   :alt: PyPi package 
+
+.. |Downloads| image:: https://img.shields.io/pypi/dm/pibooth?color=purple
+   :target: https://test.pypi.org/project/pibooth-picamera2
+   :alt: PyPi downloads
